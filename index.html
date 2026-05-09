@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuescore — Inschrijving Notifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0a;
+    --surface:   #111111;
+    --surface2:  #161616;
+    --surface3:  #1e1e1e;
+    --border:    #2a2a2a;
+    --border2:   #333333;
+    --text:      #e8e8e8;
+    --muted:     #666666;
+    --muted2:    #444444;
+    --accent:    #f5a623;
+    --accent2:   #e8941a;
+    --green:     #4ade80;
+    --red:       #f87171;
+    --blue:      #60a5fa;
+    --mono:      'JetBrains Mono', monospace;
+    --display:   'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINES ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .logo-sub {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    display: block;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted2);
+  }
+
+  .pulse.active {
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── LAYOUT ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 820px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .panel-header .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .panel-body { padding: 16px; }
+
+  /* ── INPUTS ── */
+  label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(245,166,35,0.12);
+  }
+
+  input::placeholder { color: var(--muted2); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 5px;
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); background: var(--surface3); }
+
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .btn-full { width: 100%; }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── PLAYER CARD ── */
+  .player-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .player-card.visible { display: block; }
+
+  .player-name {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .player-id {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .topic-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .topic-label { color: var(--muted); font-size: 10px; }
+  .topic-value { color: var(--accent); font-weight: 500; }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 12px;
+    transition: color 0.15s;
+  }
+  .copy-btn:hover { color: var(--accent); }
+
+  /* ── NTFY INSTRUCTIONS ── */
+  .ntfy-steps { list-style: none; counter-reset: steps; }
+  .ntfy-steps li {
+    counter-increment: steps;
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    align-items: flex-start;
+  }
+  .ntfy-steps li:last-child { border-bottom: none; }
+  .ntfy-steps li::before {
+    content: counter(steps);
+    min-width: 18px;
+    height: 18px;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .ntfy-steps a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .ntfy-steps a:hover { text-decoration: underline; }
+
+  /* ── MAIN CONTENT ── */
+  .main { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── FILTERS ── */
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-group { display: flex; gap: 6px; flex: 1; }
+
+  .search-wrap { position: relative; flex: 1; min-width: 180px; }
+  .search-wrap input { padding-left: 32px; }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted2);
+    font-size: 13px;
+    pointer-events: none;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
+  }
+
+  .filter-tab {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .filter-tab.active {
+    background: var(--surface3);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  /* ── TOURNAMENT LIST ── */
+  .tournament-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .tournament-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    transition: border-color 0.15s, background 0.15s;
+    animation: slideIn 0.2s ease both;
+  }
+
+  .tournament-card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+
+  .tournament-card.watched {
+    border-color: rgba(245,166,35,0.35);
+    background: rgba(245,166,35,0.04);
+  }
+
+  .tournament-card.watched .t-name { color: var(--accent); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .t-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .badge-discipline {
+    color: var(--blue);
+    border-color: rgba(96,165,250,0.25);
+    background: rgba(96,165,250,0.08);
+  }
+
+  .badge-open {
+    color: var(--green);
+    border-color: rgba(74,222,128,0.3);
+    background: rgba(74,222,128,0.08);
+  }
+
+  .badge-soon {
+    color: var(--accent);
+    border-color: rgba(245,166,35,0.3);
+    background: rgba(245,166,35,0.08);
+  }
+
+  .badge-closed {
+    color: var(--muted);
+    border-color: var(--border);
+    background: transparent;
+  }
+
+  .t-name {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    transition: color 0.15s;
+    font-family: var(--display);
+  }
+
+  .t-details {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .t-details span { display: flex; align-items: center; gap: 4px; }
+
+  .watch-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Custom toggle switch */
+  .toggle-wrap { position: relative; }
+
+  .toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    user-select: none;
+  }
+
+  .toggle-track {
+    width: 36px;
+    height: 20px;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--muted);
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: all 0.2s;
+  }
+
+  .toggle-input:checked + .toggle-label .toggle-track {
+    background: rgba(245,166,35,0.15);
+    border-color: var(--accent);
+  }
+
+  .toggle-input:checked + .toggle-label .toggle-thumb {
+    transform: translateX(16px);
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(245,166,35,0.5);
+  }
+
+  .toggle-input:checked + .toggle-label { color: var(--accent); }
+
+  .entry-time {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 90px;
+    line-height: 1.4;
+  }
+
+  .entry-time.open { color: var(--green); }
+  .entry-time.soon { color: var(--accent); }
+
+  /* ── MANUAL ADD ── */
+  .add-manual {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .add-manual > div { flex: 1; }
+
+  /* ── WATCHLIST SUMMARY ── */
+  .watchlist-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .wl-info { font-size: 12px; color: var(--muted); }
+  .wl-count { font-size: 22px; font-family: var(--display); font-weight: 800; color: var(--accent); }
+
+  /* ── EMPTY / LOADING STATES ── */
+  .state-box {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+    display: none;
+  }
+
+  .state-box.visible { display: block; }
+
+  .state-box .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+    opacity: 0.5;
+  }
+
+  .state-box p { font-size: 12px; line-height: 1.7; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    padding: 12px 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    z-index: 1000;
+    max-width: 300px;
+    pointer-events: none;
+  }
+
+  #toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #toast.success { border-color: rgba(74,222,128,0.4); }
+  #toast.error   { border-color: rgba(248,113,113,0.4); }
+
+  /* ── MISC ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+  }
+
+  .text-muted { color: var(--muted); }
+  .text-accent { color: var(--accent); }
+  .text-green { color: var(--green); }
+
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .gap-8 { gap: 8px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .section-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── CONFIG NOTICE ── */
+  .config-notice {
+    background: rgba(245,166,35,0.06);
+    border: 1px solid rgba(245,166,35,0.25);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+    display: none;
+  }
+  .config-notice.visible { display: block; }
+  .config-notice strong { color: var(--accent); font-weight: 500; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted2);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎱</div>
+    <div>
+      Cuescore
+      <span class="logo-sub">Inschrijving Notifier</span>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="pulse" id="statusPulse"></div>
+    <span id="statusText">Verbinding maken...</span>
+  </div>
+</header>
+
+<!-- ══ MAIN LAYOUT ════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- ── SIDEBAR ───────────────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- SPELER INSTELLEN -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        Jouw Profiel
+      </div>
+      <div class="panel-body">
+        <div style="margin-bottom:12px">
+          <label>Cuescore Speler-ID</label>
+          <div class="flex gap-8" style="margin-bottom:8px">
+            <input type="number" id="playerIdInput" placeholder="bv. 123456" style="flex:1" />
+            <button class="btn btn-primary btn-sm" onclick="loadPlayer()">
+              Laden
+            </button>
+          </div>
+          <div style="font-size:10px; color:var(--muted)">
+            Vind je ID op <a href="https://cuescore.com" target="_blank" style="color:var(--accent)">cuescore.com</a> via je profiel-URL
+          </div>
+        </div>
+
+        <!-- Player card (hidden until loaded) -->
+        <div class="player-card" id="playerCard">
+          <div class="player-name" id="playerName">—</div>
+          <div class="player-id" id="playerIdDisplay">ID: —</div>
+          <div style="margin-bottom:8px">
+            <div class="topic-label" style="margin-bottom:5px">Jouw ntfy.sh topic</div>
+            <div class="topic-box">
+              <div>
+                <div class="topic-value" id="topicDisplay">—</div>
+              </div>
+              <button class="copy-btn" onclick="copyTopic()" title="Kopieer topic">⎘</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WATCHLIST SAMENVATTING -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        Mijn Watchlist
+      </div>
+      <div class="panel-body">
+        <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:12px">
+          <span class="wl-count" id="watchCount">0</span>
+          <span style="font-size:12px; color:var(--muted)">toernooien gevolgd</span>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:12px" id="watchlistStatus">
+          Stel eerst je speler-ID in om je watchlist op te slaan.
+        </div>
+        <button class="btn btn-ghost btn-sm btn-full" onclick="saveWatchlist()" id="saveBtn" disabled>
+          ↑ Watchlist opslaan
+        </button>
+      </div>
+    </div>
+
+    <!-- MANUEEL TOEVOEGEN -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        Handmatig Toevoegen
+      </div>
+      <div class="panel-body">
+        <div style="font-size:11px; color:var(--muted); margin-bottom:10px">
+          Buitenlands of ontbrekend toernooi toevoegen via ID
+        </div>
+        <div class="add-manual">
+          <div>
+            <label>Toernooi-ID</label>
+            <input type="text" id="manualTournamentId" placeholder="bv. 81456901" />
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="addManualTournament()">
+            + Laden
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NTFY INSTRUCTIES -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        ntfy.sh Instellen
+      </div>
+      <div class="panel-body">
+        <ol class="ntfy-steps">
+          <li>
+            Download de <a href="https://ntfy.sh" target="_blank">ntfy app</a> op je telefoon (iOS of Android)
+          </li>
+          <li>
+            Open de app → klik op <strong style="color:var(--text)">+</strong> en voeg je persoonlijke topic in
+          </li>
+          <li>
+            Je topic staat hierboven: <span style="color:var(--accent)">cuescore-reg-&lt;jouwID&gt;</span>
+          </li>
+          <li>
+            Zet het vinkje op de toernooien die je wilt volgen
+          </li>
+          <li>
+            Zodra inschrijving opengaat, krijg je automatisch een push-bericht
+          </li>
+        </ol>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN CONTENT ───────────────────────────────────────────── -->
+  <main class="main">
+
+    <div>
+      <div class="section-title">Aankomende Toernooien</div>
+      <div class="section-sub">Zet het vinkje aan om een notificatie te ontvangen zodra inschrijving opengaat</div>
+    </div>
+
+    <!-- CONFIG NOTICE -->
+    <div class="config-notice" id="configNotice">
+      <strong>⚙️ Backend instellen:</strong> Vul de Azure Function URL in <code>CONFIG.FUNCTION_URL</code> bovenin de JavaScript-sectie van dit bestand om opslaan en ophalen van watchlists te activeren. Zolang dit niet ingesteld is, werkt de pagina in <em>lokale modus</em> (alleen localStorage).
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" placeholder="Zoek toernooi..." oninput="filterTournaments()">
+      </div>
+      <div class="filter-tabs" id="disciplineFilter">
+        <button class="filter-tab active" data-value="" onclick="setDisciplineFilter(this, '')">Alles</button>
+        <button class="filter-tab" data-value="9-Ball" onclick="setDisciplineFilter(this, '9-Ball')">9-Ball</button>
+        <button class="filter-tab" data-value="8-Ball" onclick="setDisciplineFilter(this, '8-Ball')">8-Ball</button>
+        <button class="filter-tab" data-value="Snooker" onclick="setDisciplineFilter(this, 'Snooker')">Snooker</button>
+      </div>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div class="state-box" id="loadingState">
+      <span class="icon">⌛</span>
+      <p>Toernooien ophalen...</p>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="state-box" id="emptyState">
+      <span class="icon">🔍</span>
+      <p>Geen toernooien gevonden.<br>Probeer andere filteropties of voeg handmatig een toernooi toe via het ID.</p>
+    </div>
+
+    <!-- NO PLAYER STATE -->
+    <div class="state-box visible" id="noPlayerState">
+      <span class="icon">👤</span>
+      <p>Stel je Cuescore speler-ID in via het paneel links<br>om toernooien te laden en je watchlist te beheren.</p>
+    </div>
+
+    <!-- TOURNAMENT LIST -->
+    <div class="tournament-list" id="tournamentList"></div>
+
+  </main>
+</div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════ -->
+<footer>
+  <div>Cuescore Inschrijving Notifier — <a href="https://github.com/peterdeswart96-ship-it/cuescore-registratie-notifier" target="_blank">GitHub</a></div>
+  <div>Notificaties via <a href="https://ntfy.sh" target="_blank">ntfy.sh</a> · Data via <a href="https://cuescore.com" target="_blank">Cuescore API</a></div>
+</footer>
+
+<!-- ══ TOAST ═════════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<!-- ══ JAVASCRIPT ════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────────────────────
+   CONFIG — pas dit aan na deployment van de Azure Function
+   ───────────────────────────────────────────────────────────── */
+const CONFIG = {
+  // URL van de Azure Function API (vervang na deployment)
+  FUNCTION_URL: '',     // bv. 'https://func-cuescore-reg-notifier.azurewebsites.net/api'
+
+  // Vaste Nederlandse toernooi-IDs als fallback seed lijst
+  // (Cuescore heeft geen officieel lijst-endpoint, dit zijn bekende NL-toernooien)
+  SEED_TOURNAMENT_IDS: [
+    81456901   // Hertog Jan Special edition 2026 — uit Fase 0 verkenning
+    // Voeg hier meer bekende NL toernooi-IDs toe
+  ],
+
+  // Cuescore API basis URL
+  CUESCORE_API: 'https://api.cuescore.com',
+
+  // Cuescore toernooien lijst (ongedocumenteerd endpoint, geobserveerd via cuescore.com)
+  // Toernooienlijst NL: gefilterd op country=NL
+  CUESCORE_TOURNAMENTS_URL: 'https://api.cuescore.com/tournaments/?country=NL&status=upcoming',
+
+  // ntfy topic prefix
+  NTFY_PREFIX: 'cuescore-reg-'
+};
+
+/* ─────────────────────────────────────────────────────────────
+   APPLICATIESTATUS
+   ───────────────────────────────────────────────────────────── */
+const state = {
+  playerId: null,
+  playerName: null,
+  tournaments: [],          // Alle geladen toernooien
+  watchlist: new Set(),     // Tournament IDs die de speler volgt
+  disciplineFilter: '',
+  searchQuery: '',
+  backendAvailable: false
+};
+
+/* ─────────────────────────────────────────────────────────────
+   INIT
+   ───────────────────────────────────────────────────────────── */
+async function init() {
+  checkBackend();
+  restoreLocalState();
+
+  // Als er al een speler-ID in localStorage staat: laad automatisch
+  const savedId = localStorage.getItem('cuescore_player_id');
+  if (savedId) {
+    document.getElementById('playerIdInput').value = savedId;
+    await loadPlayer(true);   // silent = true (geen toast bij auto-restore)
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BACKEND CHECK
+   ───────────────────────────────────────────────────────────── */
+async function checkBackend() {
+  if (!CONFIG.FUNCTION_URL) {
+    document.getElementById('configNotice').classList.add('visible');
+    setStatus(false, 'Lokale modus (geen backend)');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.FUNCTION_URL}/health`, { method: 'GET' });
+    state.backendAvailable = res.ok;
+    setStatus(res.ok, res.ok ? 'Backend verbonden' : 'Backend niet bereikbaar');
+  } catch {
+    state.backendAvailable = false;
+    setStatus(false, 'Backend niet bereikbaar');
+  }
+}
+
+function setStatus(ok, text) {
+  const pulse = document.getElementById('statusPulse');
+  const statusText = document.getElementById('statusText');
+  pulse.className = 'pulse' + (ok ? ' active' : '');
+  statusText.textContent = text;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SPELER LADEN
+   ───────────────────────────────────────────────────────────── */
+async function loadPlayer(silent = false) {
+  const rawId = document.getElementById('playerIdInput').value.trim();
+  if (!rawId) { showToast('Voer een speler-ID in', 'error'); return; }
+
+  const playerId = parseInt(rawId, 10);
+  if (isNaN(playerId)) { showToast('Ongeldig ID', 'error'); return; }
+
+  setStatus(false, 'Speler laden...');
+
+  try {
+    // Ophalen spelerdata via Cuescore API
+    // Cuescore heeft geen dedicated player-endpoint — we valideren via een recent
+    // toernooi-resultaat of via een generiek profiel. Voor validatie gebruiken we
+    // de player-stats URL (ongedocumenteerd maar stabiel in gebruik).
+    const res = await fetch(`${CONFIG.CUESCORE_API}/player/?id=${playerId}`);
+    const data = await res.json();
+
+    if (!data || data.error) {
+      showToast('Speler niet gevonden', 'error');
+      setStatus(false, 'Speler niet gevonden');
+      return;
+    }
+
+    state.playerId  = playerId;
+    // Gebruik name veld, of stel "Speler #ID" in als fallback
+    state.playerName = data.name || data.playerName || `Speler #${playerId}`;
+
+    // Opslaan in localStorage
+    localStorage.setItem('cuescore_player_id', playerId);
+    localStorage.setItem('cuescore_player_name', state.playerName);
+
+    // UI updaten
+    updatePlayerCard();
+
+    // Watchlist laden (backend of localStorage)
+    await loadWatchlist();
+
+    // Toernooienlijst laden
+    await loadTournaments();
+
+    if (!silent) showToast(`Welkom, ${state.playerName}!`, 'success');
+    setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Lokale modus');
+
+  } catch (err) {
+    console.error('loadPlayer error:', err);
+
+    // Cuescore player-endpoint kan CORS-issues geven vanuit de browser.
+    // Fallback: accepteer het ID en sla op zonder validatie.
+    state.playerId   = playerId;
+    state.playerName = localStorage.getItem('cuescore_player_name') || `Speler #${playerId}`;
+
+    localStorage.setItem('cuescore_player_id', playerId);
+
+    updatePlayerCard();
+    await loadWatchlist();
+    await loadTournaments();
+
+    if (!silent) showToast('ID opgeslagen (validatie overgeslagen)', 'success');
+    setStatus(false, 'Beperkte modus');
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PLAYER CARD UI
+   ───────────────────────────────────────────────────────────── */
+function updatePlayerCard() {
+  document.getElementById('playerCard').classList.add('visible');
+  document.getElementById('playerName').textContent     = state.playerName;
+  document.getElementById('playerIdDisplay').textContent = `ID: ${state.playerId}`;
+  document.getElementById('topicDisplay').textContent   = `${CONFIG.NTFY_PREFIX}${state.playerId}`;
+  document.getElementById('saveBtn').disabled = false;
+
+  document.getElementById('watchlistStatus').textContent =
+    state.backendAvailable
+      ? 'Watchlist wordt opgeslagen in de cloud.'
+      : 'Watchlist wordt lokaal opgeslagen (localStorage).';
+
+  // Verberg no-player-state
+  document.getElementById('noPlayerState').classList.remove('visible');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TOERNOOIEN LADEN
+   ───────────────────────────────────────────────────────────── */
+async function loadTournaments() {
+  showLoadingState(true);
+
+  let tournaments = [];
+
+  // Stap 1: probeer het Cuescore toernooien-endpoint (kan 404/CORS geven)
+  try {
+    const res = await fetch(CONFIG.CUESCORE_TOURNAMENTS_URL);
+    if (res.ok) {
+      const data = await res.json();
+      // Endpoint kan array of object teruggeven
+      const arr = Array.isArray(data) ? data : (data.tournaments || data.items || []);
+      tournaments = arr.filter(t => t && t.tournamentId);
+    }
+  } catch {
+    // Endpoint niet beschikbaar — val terug op seed-IDs
+  }
+
+  // Stap 2: seed-IDs laden als fallback of aanvulling
+  if (tournaments.length === 0) {
+    tournaments = await loadSeedTournaments();
+  }
+
+  // Stap 3: eerder handmatig toegevoegde IDs laden uit localStorage
+  const manualIds = getManualIds();
+  for (const id of manualIds) {
+    if (!tournaments.find(t => String(t.tournamentId) === String(id))) {
+      const t = await fetchSingleTournament(id);
+      if (t) tournaments.push(t);
+    }
+  }
+
+  // Normaliseer en filter op toekomst/heden
+  state.tournaments = normalizeTournaments(tournaments);
+
+  showLoadingState(false);
+  renderTournaments();
+}
+
+async function loadSeedTournaments() {
+  const results = [];
+  for (const id of CONFIG.SEED_TOURNAMENT_IDS) {
+    const t = await fetchSingleTournament(id);
+    if (t) results.push(t);
+  }
+  return results;
+}
+
+async function fetchSingleTournament(id) {
+  try {
+    const res = await fetch(`${CONFIG.CUESCORE_API}/tournament/?id=${id}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.tournamentId ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NORMALISATIE
+   ───────────────────────────────────────────────────────────── */
+function normalizeTournaments(raw) {
+  return raw
+    .map(t => ({
+      id:           String(t.tournamentId || t.id),
+      name:         t.name || 'Onbekend toernooi',
+      discipline:   t.discipline || t.disciplineName || 'Pool',
+      disciplineId: t.disciplineId,
+      starttime:    t.starttime || t.startDate || '',
+      stoptime:     t.stoptime  || t.endDate   || '',
+      entrystart:   t.entrystart || t.registrationStart || '',
+      deadline:     t.deadline  || t.registrationDeadline || '',
+      displayDate:  t.displayDate || formatDate(t.starttime),
+      location:     t.owner?.name || t.location || t.city || '',
+      country:      t.country || 'NL',
+      url:          t.url || `https://cuescore.com/tournament/${t.tournamentId || t.id}`
+    }))
+    .sort((a, b) => new Date(a.starttime) - new Date(b.starttime));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   WATCHLIST — laden & opslaan
+   ───────────────────────────────────────────────────────────── */
+async function loadWatchlist() {
+  if (state.backendAvailable && state.playerId) {
+    try {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/watchlist/${state.playerId}`);
+      if (res.ok) {
+        const data = await res.json();
+        state.watchlist = new Set((data.tournaments || []).map(String));
+        return;
+      }
+    } catch {}
+  }
+
+  // Fallback: localStorage
+  const saved = localStorage.getItem(`cuescore_watchlist_${state.playerId}`);
+  if (saved) {
+    try {
+      state.watchlist = new Set(JSON.parse(saved));
+    } catch {
+      state.watchlist = new Set();
+    }
+  }
+}
+
+async function saveWatchlist() {
+  if (!state.playerId) { showToast('Stel eerst je speler-ID in', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '⌛ Opslaan...';
+
+  const payload = {
+    playerId:    state.playerId,
+    tournaments: Array.from(state.watchlist)
+  };
+
+  // Altijd lokaal opslaan
+  localStorage.setItem(`cuescore_watchlist_${state.playerId}`, JSON.stringify(Array.from(state.watchlist)));
+
+  // Probeer ook backend
+  if (state.backendAvailable) {
+    try {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/watchlist`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showToast('Watchlist opgeslagen in de cloud ☁️', 'success');
+      } else {
+        showToast('Lokaal opgeslagen (backend fout)', 'success');
+      }
+    } catch {
+      showToast('Lokaal opgeslagen (backend niet bereikbaar)', 'success');
+    }
+  } else {
+    showToast('Watchlist lokaal opgeslagen', 'success');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '↑ Watchlist opslaan';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TOGGLE WATCH
+   ───────────────────────────────────────────────────────────── */
+function toggleWatch(tournamentId, checked) {
+  if (!state.playerId) {
+    showToast('Stel eerst je speler-ID in', 'error');
+    // Zet toggle terug
+    const el = document.getElementById(`toggle_${tournamentId}`);
+    if (el) el.checked = false;
+    return;
+  }
+
+  if (checked) {
+    state.watchlist.add(String(tournamentId));
+  } else {
+    state.watchlist.delete(String(tournamentId));
+  }
+
+  updateWatchCount();
+
+  // Kaart visueel updaten
+  const card = document.getElementById(`card_${tournamentId}`);
+  if (card) {
+    card.classList.toggle('watched', checked);
+  }
+
+  // Auto-save naar localStorage bij elke toggle
+  if (state.playerId) {
+    localStorage.setItem(
+      `cuescore_watchlist_${state.playerId}`,
+      JSON.stringify(Array.from(state.watchlist))
+    );
+  }
+}
+
+function updateWatchCount() {
+  document.getElementById('watchCount').textContent = state.watchlist.size;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MANUEEL TOERNOOI TOEVOEGEN
+   ───────────────────────────────────────────────────────────── */
+async function addManualTournament() {
+  const input = document.getElementById('manualTournamentId');
+  const id = input.value.trim();
+  if (!id) return;
+
+  showToast('Toernooi ophalen...', '');
+
+  const t = await fetchSingleTournament(id);
+  if (!t) {
+    showToast('Toernooi niet gevonden', 'error');
+    return;
+  }
+
+  const normalized = normalizeTournaments([t]);
+  const already = state.tournaments.find(x => x.id === normalized[0].id);
+
+  if (!already) {
+    state.tournaments.unshift(normalized[0]);
+    saveManualId(id);
+    renderTournaments();
+    showToast(`${normalized[0].name} toegevoegd`, 'success');
+  } else {
+    showToast('Toernooi staat al in de lijst', '');
+  }
+
+  input.value = '';
+}
+
+function getManualIds() {
+  try { return JSON.parse(localStorage.getItem('cuescore_manual_ids') || '[]'); } catch { return []; }
+}
+
+function saveManualId(id) {
+  const ids = getManualIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    localStorage.setItem('cuescore_manual_ids', JSON.stringify(ids));
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RENDER TOERNOOIEN
+   ───────────────────────────────────────────────────────────── */
+function renderTournaments() {
+  const list = document.getElementById('tournamentList');
+  const filtered = getFilteredTournaments();
+
+  document.getElementById('emptyState').classList.toggle('visible', filtered.length === 0 && state.tournaments.length > 0);
+  list.innerHTML = '';
+
+  if (filtered.length === 0) return;
+
+  filtered.forEach((t, index) => {
+    const card = buildTournamentCard(t, index);
+    list.appendChild(card);
+  });
+
+  updateWatchCount();
+}
+
+function buildTournamentCard(t, index) {
+  const card = document.createElement('div');
+  card.className = 'tournament-card' + (state.watchlist.has(t.id) ? ' watched' : '');
+  card.id = `card_${t.id}`;
+  card.style.animationDelay = `${index * 30}ms`;
+
+  const { statusLabel, statusClass, entryInfo } = getEntryStatus(t);
+  const isWatched = state.watchlist.has(t.id);
+
+  card.innerHTML = `
+    <div class="t-info">
+      <div class="t-meta">
+        <span class="badge badge-discipline">${escHtml(t.discipline)}</span>
+        <span class="badge ${statusClass}">${statusLabel}</span>
+        ${t.country && t.country !== 'NL' ? `<span class="badge badge-closed">${escHtml(t.country)}</span>` : ''}
+      </div>
+      <div class="t-name">
+        <a href="${escHtml(t.url)}" target="_blank" style="color:inherit;text-decoration:none;" title="Open op Cuescore">
+          ${escHtml(t.name)}
+        </a>
+      </div>
+      <div class="t-details">
+        ${t.displayDate ? `<span>📅 ${escHtml(t.displayDate)}</span>` : ''}
+        ${t.location    ? `<span>📍 ${escHtml(t.location)}</span>`   : ''}
+        ${t.entrystart  ? `<span title="Inschrijving start">🗓 ${formatDateShort(t.entrystart)}</span>` : ''}
+      </div>
+    </div>
+    <div class="watch-toggle">
+      <div class="toggle-wrap">
+        <input
+          type="checkbox"
+          class="toggle-input"
+          id="toggle_${t.id}"
+          ${isWatched ? 'checked' : ''}
+          onchange="toggleWatch('${t.id}', this.checked)"
+        />
+        <label class="toggle-label" for="toggle_${t.id}">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          ${isWatched ? 'Aan' : 'Uit'}
+        </label>
+      </div>
+      ${entryInfo ? `<div class="entry-time ${statusClass === 'badge-open' ? 'open' : statusClass === 'badge-soon' ? 'soon' : ''}">${entryInfo}</div>` : ''}
+    </div>
+  `;
+
+  // Update toggle label live
+  const input = card.querySelector('.toggle-input');
+  const label = card.querySelector('.toggle-label');
+  input.addEventListener('change', () => {
+    const txt = label.querySelector('div:last-child') || label;
+    // Update de tekst achter het track element
+    label.lastChild.textContent = input.checked ? ' Aan' : ' Uit';
+  });
+
+  return card;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ENTRY STATUS BEPALEN
+   ───────────────────────────────────────────────────────────── */
+function getEntryStatus(t) {
+  const now = new Date();
+
+  if (!t.entrystart) {
+    return { statusLabel: 'Datum onbekend', statusClass: 'badge-closed', entryInfo: '' };
+  }
+
+  const entryStart = new Date(t.entrystart);
+  const deadline   = t.deadline ? new Date(t.deadline) : null;
+
+  // Al gesloten?
+  if (deadline && now > deadline) {
+    return { statusLabel: 'Gesloten', statusClass: 'badge-closed', entryInfo: 'Inschrijving gesloten' };
+  }
+
+  // Open?
+  if (entryStart <= now) {
+    return {
+      statusLabel: '✓ Open',
+      statusClass: 'badge-open',
+      entryInfo:   deadline ? `Sluit ${formatDateShort(t.deadline)}` : 'Open'
+    };
+  }
+
+  // Binnenkort (< 7 dagen)?
+  const daysUntil = (entryStart - now) / (1000 * 60 * 60 * 24);
+  if (daysUntil < 7) {
+    return {
+      statusLabel: '⏰ Snel',
+      statusClass: 'badge-soon',
+      entryInfo:   `Over ${Math.ceil(daysUntil)} dag${daysUntil < 2 ? '' : 'en'}`
+    };
+  }
+
+  return {
+    statusLabel: 'Gepland',
+    statusClass: 'badge-closed',
+    entryInfo:   formatDateShort(t.entrystart)
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FILTERING
+   ───────────────────────────────────────────────────────────── */
+function getFilteredTournaments() {
+  return state.tournaments.filter(t => {
+    if (state.disciplineFilter && !t.discipline.toLowerCase().includes(state.disciplineFilter.toLowerCase())) return false;
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      return t.name.toLowerCase().includes(q) || t.location.toLowerCase().includes(q);
+    }
+    return true;
+  });
+}
+
+function filterTournaments() {
+  state.searchQuery = document.getElementById('searchInput').value.trim();
+  renderTournaments();
+}
+
+function setDisciplineFilter(btn, value) {
+  state.disciplineFilter = value;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTournaments();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UI HELPERS
+   ───────────────────────────────────────────────────────────── */
+function showLoadingState(show) {
+  document.getElementById('loadingState').classList.toggle('visible', show);
+  document.getElementById('emptyState').classList.remove('visible');
+  document.getElementById('noPlayerState').classList.remove('visible');
+}
+
+function copyTopic() {
+  const topic = document.getElementById('topicDisplay').textContent;
+  navigator.clipboard.writeText(topic).then(() => {
+    showToast('Topic gekopieerd!', 'success');
+  }).catch(() => {
+    showToast('Selecteer en kopieer handmatig: ' + topic, '');
+  });
+}
+
+function showToast(msg, type = '') {
+  const toast = document.getElementById('toast');
+  const icon  = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  toast.innerHTML = `<span>${icon}</span><span>${escHtml(msg)}</span>`;
+  toast.className = 'toast visible ' + type;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 3000);
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch { return iso; }
+}
+
+function formatDateShort(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  } catch { return iso; }
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;');
+}
+
+function restoreLocalState() {
+  // Eerder opgeslagen manuele IDs zullen bij loadTournaments worden meegenomen
+}
+
+/* ─────────────────────────────────────────────────────────────
+   START
+   ───────────────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>
