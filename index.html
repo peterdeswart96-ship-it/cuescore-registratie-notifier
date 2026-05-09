@@ -961,9 +961,8 @@ async function checkBackend() {
   }
 
   try {
-    const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health`, {
-      method: 'GET',
-      headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
+    const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health&code=${CONFIG.FUNCTION_KEY}`, {
+      method: 'GET'
     });
     state.backendAvailable = res.ok;
     setStatus(res.ok, res.ok ? 'Backend verbonden' : 'Backend niet bereikbaar');
@@ -1154,8 +1153,7 @@ function normalizeTournaments(raw) {
 async function loadWatchlist() {
   if (state.backendAvailable && state.playerId) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?playerId=${state.playerId}`, {
-        headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?playerId=${state.playerId}&code=${CONFIG.FUNCTION_KEY}`, {
       });
       if (res.ok) {
         const data = await res.json();
@@ -1194,12 +1192,9 @@ async function saveWatchlist() {
   // Probeer ook backend
   if (state.backendAvailable) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi`, {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?code=${CONFIG.FUNCTION_KEY}`, {
         method:  'POST',
-        headers: {
-          'Content-Type':    'application/json',
-          'x-functions-key': CONFIG.FUNCTION_KEY
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
