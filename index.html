@@ -900,8 +900,9 @@
    CONFIG — pas dit aan na deployment van de Azure Function
    ───────────────────────────────────────────────────────────── */
 const CONFIG = {
-  // URL van de Azure Function API (vervang na deployment)
-  FUNCTION_URL: '',     // bv. 'https://func-cuescore-reg-notifier.azurewebsites.net/api'
+  // Azure Function backend
+  FUNCTION_URL: 'https://func-cuescore-reg-notifier.azurewebsites.net/api',
+  FUNCTION_KEY: '3N9jRfh-ui-bRwfzGnO-dbL1c58Lg8q99q4_YIjkwtNrAzFuAzSjCg==',
 
   // Vaste Nederlandse toernooi-IDs als fallback seed lijst
   // (Cuescore heeft geen officieel lijst-endpoint, dit zijn bekende NL-toernooien)
@@ -960,7 +961,10 @@ async function checkBackend() {
   }
 
   try {
-    const res = await fetch(`${CONFIG.FUNCTION_URL}/health`, { method: 'GET' });
+    const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health`, {
+      method: 'GET',
+      headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
+    });
     state.backendAvailable = res.ok;
     setStatus(res.ok, res.ok ? 'Backend verbonden' : 'Backend niet bereikbaar');
   } catch {
@@ -1150,7 +1154,9 @@ function normalizeTournaments(raw) {
 async function loadWatchlist() {
   if (state.backendAvailable && state.playerId) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/watchlist/${state.playerId}`);
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?playerId=${state.playerId}`, {
+        headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
+      });
       if (res.ok) {
         const data = await res.json();
         state.watchlist = new Set((data.tournaments || []).map(String));
@@ -1188,10 +1194,13 @@ async function saveWatchlist() {
   // Probeer ook backend
   if (state.backendAvailable) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/watchlist`, {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload)
+        headers: {
+          'Content-Type':    'application/json',
+          'x-functions-key': CONFIG.FUNCTION_KEY
+        },
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
