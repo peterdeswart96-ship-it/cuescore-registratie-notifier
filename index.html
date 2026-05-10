@@ -989,7 +989,9 @@ const state = {
    INIT
    ───────────────────────────────────────────────────────────── */
 async function init() {
-  checkBackend();
+  // Wacht op backend check VOORDAT de speler geladen wordt
+  // Anders is state.backendAvailable nog false als loadWatchlist draait
+  await checkBackend();
   restoreLocalState();
 
   // Als er al een speler-ID in localStorage staat: laad automatisch
@@ -1086,11 +1088,15 @@ async function loadPlayer(silent = false) {
     localStorage.setItem('cuescore_player_id', playerId);
 
     updatePlayerCard();
+
+    // Belangrijk: ook in fallback modus de backend gebruiken als die beschikbaar is
+    // (backendAvailable is al gezet door checkBackend() in init())
     await loadWatchlist();
     await loadTournaments();
 
     if (!silent) showToast('ID opgeslagen (validatie overgeslagen)', 'success');
-    setStatus(false, 'Beperkte modus');
+    // Toon backend status correct — niet altijd "Beperkte modus"
+    setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Beperkte modus');
   }
 }
 
