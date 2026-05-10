@@ -1412,7 +1412,7 @@ function buildTournamentCard(t, index) {
     </div>
     <div class="watch-toggle">
       <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end">
-        ${t.logo ? `<img src="${escHtml(t.logo)}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;opacity:0.9;" onerror="this.style.display='none'">` : '<div style="width:32px;height:32px;flex-shrink:0;"></div>'}
+        ${t.logo ? `<img src="${escHtml(t.logo)}" alt="" style="width:28px;height:28px;border-radius:5px;object-fit:contain;flex-shrink:0;opacity:0.9;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;" onerror="this.style.display='none'">` : '<div style="width:28px;height:28px;flex-shrink:0;"></div>'}
         <div class="toggle-wrap">
           <input
             type="checkbox"
