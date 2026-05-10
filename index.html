@@ -1191,6 +1191,7 @@ function normalizeTournaments(raw) {
       deadline:     t.deadline  || t.registrationDeadline || '',
       status:       t.status || '',
       statusCode:   t.statusCode || 0,
+      logo:         t.owner?.logo || t.organizers?.[0]?.logo || '',
       displayDate:  t.displayDate || formatDate(t.starttime),
       location:     t.owner?.name || t.location || t.city || '',
       country:      t.country || 'NL',
@@ -1410,20 +1411,23 @@ function buildTournamentCard(t, index) {
       </div>
     </div>
     <div class="watch-toggle">
-      <div class="toggle-wrap">
-        <input
-          type="checkbox"
-          class="toggle-input"
-          id="toggle_${t.id}"
-          ${isWatched ? 'checked' : ''}
-          onchange="toggleWatch('${t.id}', this.checked)"
-        />
-        <label class="toggle-label" for="toggle_${t.id}">
-          <div class="toggle-track"><div class="toggle-thumb"></div></div>
-          ${isWatched ? 'Aan' : 'Uit'}
-        </label>
+      <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end">
+        ${t.logo ? `<img src="${escHtml(t.logo)}" alt="" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;opacity:0.9;" onerror="this.style.display='none'">` : '<div style="width:32px;height:32px;flex-shrink:0;"></div>'}
+        <div class="toggle-wrap">
+          <input
+            type="checkbox"
+            class="toggle-input"
+            id="toggle_${t.id}"
+            ${isWatched ? 'checked' : ''}
+            onchange="toggleWatch('${t.id}', this.checked)"
+          />
+          <label class="toggle-label" for="toggle_${t.id}">
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            ${isWatched ? 'Aan' : 'Uit'}
+          </label>
+        </div>
       </div>
-      ${entryInfo ? `<div class="entry-time ${statusClass === 'badge-open' ? 'open' : statusClass === 'badge-soon' ? 'soon' : ''}">${entryInfo}</div>` : ''}
+      ${entryInfo ? `<div class="entry-time ${statusClass === 'badge-open' ? 'open' : statusClass === 'badge-soon' ? 'soon' : ''}" style="text-align:right">${entryInfo}</div>` : ''}
     </div>
   `;
 
