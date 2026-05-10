@@ -1068,11 +1068,13 @@ async function loadPlayer(silent = false) {
     // UI updaten
     updatePlayerCard();
 
-    // Watchlist laden (backend of localStorage)
+    // Laad eerst toernooien, dan watchlist, dan render
+    // Zo zijn de toernooi-kaarten al aangemaakt als de watchlist binnenkomt
+    await loadTournaments();
     await loadWatchlist();
 
-    // Toernooienlijst laden
-    await loadTournaments();
+    // Herrender met de juiste watchlist vinkjes
+    renderTournaments();
 
     if (!silent) showToast(`Welkom, ${state.playerName}!`, 'success');
     setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Lokale modus');
@@ -1089,13 +1091,12 @@ async function loadPlayer(silent = false) {
 
     updatePlayerCard();
 
-    // Belangrijk: ook in fallback modus de backend gebruiken als die beschikbaar is
-    // (backendAvailable is al gezet door checkBackend() in init())
-    await loadWatchlist();
+    // Laad eerst toernooien, dan watchlist, dan render
     await loadTournaments();
+    await loadWatchlist();
+    renderTournaments();
 
     if (!silent) showToast('ID opgeslagen (validatie overgeslagen)', 'success');
-    // Toon backend status correct — niet altijd "Beperkte modus"
     setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Beperkte modus');
   }
 }
