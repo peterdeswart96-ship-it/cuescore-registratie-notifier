@@ -1189,6 +1189,8 @@ function normalizeTournaments(raw) {
       stoptime:     t.stoptime  || t.endDate   || '',
       entrystart:   t.entrystart || t.registrationStart || '',
       deadline:     t.deadline  || t.registrationDeadline || '',
+      status:       t.status || '',
+      statusCode:   t.statusCode || 0,
       displayDate:  t.displayDate || formatDate(t.starttime),
       location:     t.owner?.name || t.location || t.city || '',
       country:      t.country || 'NL',
@@ -1443,14 +1445,41 @@ function buildTournamentCard(t, index) {
 function getEntryStatus(t) {
   const now = new Date();
 
+  // Bepaal effectieve deadline: deadline veld, of starttime als fallback
+  const effectiveDeadlineStr = t.deadline || t.starttime || '';
+  const deadline = effectiveDeadlineStr ? new Date(effectiveDeadlineStr) : null;
+
+  // Al gesloten? (deadline verstreken)
+  if (deadline && now > deadline) {
+    return { statusLabel: 'Gesloten', statusClass: 'badge-closed', entryInfo: 'Inschrijving gesloten' };
+  }
+
+  // Geen entrystart — kijk of het toernooi toch open is via status veld
   if (!t.entrystart) {
+    const statusLower = (t.status || '').toLowerCase();
+    const isOpen = statusLower === 'open' || statusLower === 'registration';
+
+    if (isOpen) {
+      return {
+        statusLabel: '✓ Open',
+        statusClass: 'badge-open',
+        entryInfo: deadline ? `Sluit ${formatDateShort(effectiveDeadlineStr)}` : 'Open'
+      };
+    }
+    // Controleer of starttime nog in de toekomst ligt (toernooi gepland maar geen entrystart)
+    if (t.starttime) {
+      const startDt = new Date(t.starttime);
+      const daysUntilStart = (startDt - now) / (1000 * 60 * 60 * 24);
+      if (daysUntilStart <= 1 && daysUntilStart > 0) {
+        return { statusLabel: '⏰ Snel', statusClass: 'badge-soon', entryInfo: `Start ${formatDateShort(t.starttime)}` };
+      }
+    }
     return { statusLabel: 'Datum onbekend', statusClass: 'badge-closed', entryInfo: '' };
   }
 
   const entryStart = new Date(t.entrystart);
-  const deadline   = t.deadline ? new Date(t.deadline) : null;
 
-  // Al gesloten?
+  // Al gesloten via deadline?
   if (deadline && now > deadline) {
     return { statusLabel: 'Gesloten', statusClass: 'badge-closed', entryInfo: 'Inschrijving gesloten' };
   }
@@ -1460,7 +1489,7 @@ function getEntryStatus(t) {
     return {
       statusLabel: '✓ Open',
       statusClass: 'badge-open',
-      entryInfo:   deadline ? `Sluit ${formatDateShort(t.deadline)}` : 'Open'
+      entryInfo: deadline ? `Sluit ${formatDateShort(effectiveDeadlineStr)}` : 'Open'
     };
   }
 
@@ -1470,14 +1499,14 @@ function getEntryStatus(t) {
     return {
       statusLabel: '⏰ Snel',
       statusClass: 'badge-soon',
-      entryInfo:   `Over ${Math.ceil(daysUntil)} dag${daysUntil < 2 ? '' : 'en'}`
+      entryInfo: `Over ${Math.ceil(daysUntil)} dag${daysUntil < 2 ? '' : 'en'}`
     };
   }
 
   return {
     statusLabel: 'Gepland',
     statusClass: 'badge-closed',
-    entryInfo:   formatDateShort(t.entrystart)
+    entryInfo: formatDateShort(t.entrystart)
   };
 }
 
