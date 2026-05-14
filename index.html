@@ -701,133 +701,9 @@
 
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--accent); }
-
-  /* ── LOADING OVERLAY ── */
-  #loadingOverlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    z-index: 9998;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 32px;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
-  }
-
-  #loadingOverlay.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .overlay-title {
-    font-family: var(--display);
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--text);
-    text-align: center;
-  }
-
-  .overlay-sub {
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    text-align: center;
-    margin-top: -20px;
-  }
-
-  .billiard-table {
-    position: relative;
-    width: 320px;
-    height: 180px;
-    background: #1a3a1a;
-    border: 3px solid #2d5a2d;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
-  }
-
-  .billiard-table::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg, transparent, transparent 3px,
-      rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
-    );
-    pointer-events: none;
-  }
-
-  /* Pockets */
-  .pocket {
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    background: #000;
-    border-radius: 50%;
-    border: 2px solid #1a3a1a;
-  }
-  .pocket.tl { top: -2px; left: -2px; }
-  .pocket.tm { top: -2px; left: 50%; transform: translateX(-50%); }
-  .pocket.tr { top: -2px; right: -2px; }
-  .pocket.bl { bottom: -2px; left: -2px; }
-  .pocket.bm { bottom: -2px; left: 50%; transform: translateX(-50%); }
-  .pocket.br { bottom: -2px; right: -2px; }
-
-  .pool-ball {
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    font-weight: 700;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-    box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(255,255,255,0.3);
-    will-change: transform;
-  }
-
-  .overlay-status {
-    font-size: 11px;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .overlay-status .spinner {
-    width: 12px;
-    height: 12px;
-    border-width: 1.5px;
-  }
 </style>
 </head>
 <body>
-
-<!-- ══ LOADING OVERLAY ══════════════════════════════════════════════ -->
-<div id="loadingOverlay">
-  <div class="overlay-title">🎱 Cuescore Notifier</div>
-  <div class="billiard-table" id="billiardTable">
-    <div class="pocket tl"></div>
-    <div class="pocket tm"></div>
-    <div class="pocket tr"></div>
-    <div class="pocket bl"></div>
-    <div class="pocket bm"></div>
-    <div class="pocket br"></div>
-  </div>
-  <div class="overlay-sub">Verbinding maken met backend...</div>
-  <div class="overlay-status">
-    <div class="spinner"></div>
-    <span id="overlayStatusText">Verbinding controleren</span>
-  </div>
-</div>
 
 <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
 <header>
@@ -858,15 +734,36 @@
       </div>
       <div class="panel-body">
         <div style="margin-bottom:12px">
-          <label>Cuescore Speler-ID</label>
-          <div class="flex gap-8" style="margin-bottom:8px">
-            <input type="number" id="playerIdInput" placeholder="bv. 123456" style="flex:1" />
-            <button class="btn btn-primary btn-sm" onclick="loadPlayer()">
-              Laden
+          <label>Zoek je naam</label>
+          <div style="position:relative; margin-bottom:8px">
+            <input
+              type="text"
+              id="playerSearchInput"
+              placeholder="Typ je naam..."
+              oninput="onPlayerSearch()"
+              onkeydown="onPlayerSearchKey(event)"
+              autocomplete="off"
+              style="width:100%; padding-right:36px"
+            />
+            <button class="btn btn-primary btn-sm" onclick="loadPlayer()" style="position:absolute; right:2px; top:50%; transform:translateY(-50%); padding:4px 10px;">
+              ↵
             </button>
+            <div id="playerSuggestions" style="
+              display:none;
+              position:absolute;
+              top:100%;
+              left:0; right:0;
+              background:var(--surface2);
+              border:1px solid var(--border2);
+              border-top:none;
+              border-radius:0 0 5px 5px;
+              max-height:180px;
+              overflow-y:auto;
+              z-index:200;
+            "></div>
           </div>
           <div style="font-size:10px; color:var(--muted)">
-            Vind je ID op <a href="https://cuescore.com" target="_blank" style="color:var(--accent)">cuescore.com</a> via je profiel-URL
+            Niet gevonden? Voeg je ID handmatig toe via het paneel hieronder
           </div>
         </div>
 
@@ -1063,92 +960,20 @@ const state = {
    INIT
    ───────────────────────────────────────────────────────────── */
 async function init() {
-  startBilliardAnimation();
+  checkBackend();
   restoreLocalState();
-
-  // Wacht op backend check VOORDAT de speler geladen wordt
-  await checkBackend();
-
-  // Overlay verbergen na backend check
-  hideLoadingOverlay();
 
   // Als er al een speler-ID in localStorage staat: laad automatisch
   const savedId = localStorage.getItem('cuescore_player_id');
+  const savedName = localStorage.getItem('cuescore_player_name');
   if (savedId) {
-    document.getElementById('playerIdInput').value = savedId;
-    await loadPlayer(true);   // silent = true (geen toast bij auto-restore)
+    // Herstel naam in zoekveld
+    const searchInput = document.getElementById('playerSearchInput');
+    if (searchInput && savedName) searchInput.value = savedName;
+    state.playerId = parseInt(savedId, 10);
+    state.playerName = savedName || `Speler #${savedId}`;
+    await loadPlayer(true);
   }
-}
-
-function hideLoadingOverlay() {
-  document.getElementById('loadingOverlay').classList.add('hidden');
-}
-
-function startBilliardAnimation() {
-  const table = document.getElementById('billiardTable');
-  const W = 320, H = 180, R = 12;
-
-  // Poolbal kleuren en nummers
-  const ballDefs = [
-    { n: '1',  color: '#f5d800' },
-    { n: '2',  color: '#1a3cb0' },
-    { n: '3',  color: '#cc2200' },
-    { n: '4',  color: '#7a1faa' },
-    { n: '5',  color: '#e05a00' },
-    { n: '6',  color: '#006622' },
-    { n: '8',  color: '#111111' },
-    { n: '9',  color: '#f5d800' },
-  ];
-
-  const balls = ballDefs.map((def, i) => {
-    const el = document.createElement('div');
-    el.className = 'pool-ball';
-    el.style.background = def.color;
-    el.style.width = el.style.height = (R * 2) + 'px';
-    el.textContent = def.n;
-    table.appendChild(el);
-
-    // Willekeurige startpositie binnen de tafel
-    const x = R + Math.random() * (W - R * 2 - 24);
-    const y = R + Math.random() * (H - R * 2 - 24);
-    // Willekeurige snelheid
-    const speed = 1.5 + Math.random() * 2;
-    const angle = Math.random() * Math.PI * 2;
-
-    return {
-      el,
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed
-    };
-  });
-
-  let animId;
-
-  function animate() {
-    balls.forEach(b => {
-      b.x += b.vx;
-      b.y += b.vy;
-
-      // Stuiteren tegen de wanden
-      if (b.x <= 0) { b.x = 0; b.vx = Math.abs(b.vx); }
-      if (b.x >= W - R * 2) { b.x = W - R * 2; b.vx = -Math.abs(b.vx); }
-      if (b.y <= 0) { b.y = 0; b.vy = Math.abs(b.vy); }
-      if (b.y >= H - R * 2) { b.y = H - R * 2; b.vy = -Math.abs(b.vy); }
-
-      b.el.style.left = b.x + 'px';
-      b.el.style.top  = b.y + 'px';
-    });
-
-    animId = requestAnimationFrame(animate);
-  }
-
-  animate();
-
-  // Stop animatie als overlay verborgen wordt
-  document.getElementById('loadingOverlay').addEventListener('transitionend', () => {
-    cancelAnimationFrame(animId);
-  }, { once: true });
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1158,13 +983,8 @@ async function checkBackend() {
   if (!CONFIG.FUNCTION_URL) {
     document.getElementById('configNotice').classList.add('visible');
     setStatus(false, 'Lokale modus (geen backend)');
-    const ot = document.getElementById('overlayStatusText');
-    if (ot) ot.textContent = 'Lokale modus';
     return;
   }
-
-  const ot = document.getElementById('overlayStatusText');
-  if (ot) ot.textContent = 'Backend bereiken...';
 
   try {
     const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health`, {
@@ -1173,11 +993,9 @@ async function checkBackend() {
     });
     state.backendAvailable = res.ok;
     setStatus(res.ok, res.ok ? 'Backend verbonden' : 'Backend niet bereikbaar');
-    if (ot) ot.textContent = res.ok ? 'Verbonden!' : 'Backend niet bereikbaar';
   } catch {
     state.backendAvailable = false;
     setStatus(false, 'Backend niet bereikbaar');
-    if (ot) ot.textContent = 'Backend niet bereikbaar';
   }
 }
 
@@ -1192,11 +1010,19 @@ function setStatus(ok, text) {
    SPELER LADEN
    ───────────────────────────────────────────────────────────── */
 async function loadPlayer(silent = false) {
-  const rawId = document.getElementById('playerIdInput').value.trim();
-  if (!rawId) { showToast('Voer een speler-ID in', 'error'); return; }
+  // ID kan al in state zitten (via zoekbalk selectie of auto-restore)
+  let playerId = state.playerId;
 
-  const playerId = parseInt(rawId, 10);
-  if (isNaN(playerId)) { showToast('Ongeldig ID', 'error'); return; }
+  // Fallback: probeer te parsen uit zoekveld als getal (handmatig ingevoerd)
+  if (!playerId) {
+    const raw = (document.getElementById('playerSearchInput')?.value || '').trim();
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && String(parsed) === raw) {
+      playerId = parsed;
+    }
+  }
+
+  if (!playerId) { showToast('Selecteer eerst je naam uit de lijst', 'error'); return; }
 
   setStatus(false, 'Speler laden...');
 
@@ -1713,8 +1539,90 @@ function restoreLocalState() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   SPELERSLIJST ZOEKEN
+   ───────────────────────────────────────────────────────────── */
+let spelersLijst = [];
+
+async function laadSpelers() {
+  try {
+    const res = await fetch('spelers.json');
+    if (res.ok) spelersLijst = await res.json();
+  } catch {
+    spelersLijst = [];
+  }
+}
+
+function onPlayerSearch() {
+  const input = document.getElementById('playerSearchInput');
+  const dropdown = document.getElementById('playerSuggestions');
+  const q = input.value.trim().toLowerCase();
+
+  // Reset geselecteerde speler als gebruiker typt
+  state.playerId = null;
+
+  if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+  const matches = spelersLijst
+    .filter(([naam]) => naam.toLowerCase().includes(q))
+    .slice(0, 8);
+
+  if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+  dropdown.innerHTML = matches.map(([naam, id], i) => `
+    <div
+      data-index="${i}"
+      data-naam="${escHtml(naam)}"
+      data-id="${id}"
+      style="
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      "
+      onmousedown="selectSpeler('${escHtml(naam)}', ${id})"
+      onmouseover="this.style.background='var(--surface3)'"
+      onmouseout="this.style.background=''"
+    >
+      <span>${escHtml(naam)}</span>
+      <span style="font-size:10px; color:var(--muted)">#${id}</span>
+    </div>
+  `).join('');
+
+  dropdown.style.display = 'block';
+}
+
+function onPlayerSearchKey(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('playerSuggestions').style.display = 'none';
+  }
+  if (e.key === 'Enter') {
+    loadPlayer();
+  }
+}
+
+function selectSpeler(naam, id) {
+  state.playerId = id;
+  state.playerName = naam;
+  document.getElementById('playerSearchInput').value = naam;
+  document.getElementById('playerSuggestions').style.display = 'none';
+  loadPlayer();
+}
+
+// Sluit dropdown bij klik buiten het veld
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#playerSearchInput') && !e.target.closest('#playerSuggestions')) {
+    const dd = document.getElementById('playerSuggestions');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+/* ─────────────────────────────────────────────────────────────
    START
    ───────────────────────────────────────────────────────────── */
+laadSpelers();
 init();
 </script>
 </body>
