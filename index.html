@@ -1564,7 +1564,7 @@ function onPlayerSearch() {
 
   const matches = spelersLijst
     .filter(([naam]) => naam.toLowerCase().includes(q))
-    .slice(0, 8);
+    .slice(0, 12);
 
   if (matches.length === 0) { dropdown.style.display = 'none'; return; }
 
