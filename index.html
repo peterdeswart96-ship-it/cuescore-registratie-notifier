@@ -960,8 +960,20 @@ const state = {
    INIT
    ───────────────────────────────────────────────────────────── */
 async function init() {
-  checkBackend();
+  // Toon overlay minimaal 1.5 seconden zodat de animatie altijd zichtbaar is
+  const overlayStart = Date.now();
+  const MIN_OVERLAY_MS = 1500;
+
   restoreLocalState();
+  await checkBackend();
+
+  // Wacht eventueel de resterende tijd
+  const elapsed = Date.now() - overlayStart;
+  if (elapsed < MIN_OVERLAY_MS) {
+    await new Promise(r => setTimeout(r, MIN_OVERLAY_MS - elapsed));
+  }
+
+  hideLoadingOverlay();
 
   // Als er al een speler-ID in localStorage staat: laad automatisch
   const savedId = localStorage.getItem('cuescore_player_id');
@@ -974,6 +986,11 @@ async function init() {
     state.playerName = savedName || `Speler #${savedId}`;
     await loadPlayer(true);
   }
+}
+
+function hideLoadingOverlay() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.classList.add('hidden');
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1074,8 +1091,8 @@ async function loadPlayer(silent = false) {
     await loadWatchlist();
     await loadTournaments();
 
-    if (!silent) showToast('ID opgeslagen (validatie overgeslagen)', 'success');
-    setStatus(false, 'Beperkte modus');
+    if (!silent) showToast(`Welkom, ${state.playerName}!`, 'success');
+    setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Lokale modus');
   }
 }
 
