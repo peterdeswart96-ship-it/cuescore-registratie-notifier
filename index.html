@@ -701,9 +701,133 @@
 
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--accent); }
+
+  /* ── LOADING OVERLAY ── */
+  #loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+
+  #loadingOverlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .overlay-title {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .overlay-sub {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-align: center;
+    margin-top: -20px;
+  }
+
+  .billiard-table {
+    position: relative;
+    width: 320px;
+    height: 180px;
+    background: #1a3a1a;
+    border: 3px solid #2d5a2d;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+  }
+
+  .billiard-table::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* Pockets */
+  .pocket {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: #000;
+    border-radius: 50%;
+    border: 2px solid #1a3a1a;
+  }
+  .pocket.tl { top: -2px; left: -2px; }
+  .pocket.tm { top: -2px; left: 50%; transform: translateX(-50%); }
+  .pocket.tr { top: -2px; right: -2px; }
+  .pocket.bl { bottom: -2px; left: -2px; }
+  .pocket.bm { bottom: -2px; left: 50%; transform: translateX(-50%); }
+  .pocket.br { bottom: -2px; right: -2px; }
+
+  .pool-ball {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(255,255,255,0.3);
+    will-change: transform;
+  }
+
+  .overlay-status {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .overlay-status .spinner {
+    width: 12px;
+    height: 12px;
+    border-width: 1.5px;
+  }
 </style>
 </head>
 <body>
+
+<!-- ══ LOADING OVERLAY ══════════════════════════════════════════════ -->
+<div id="loadingOverlay">
+  <div class="overlay-title">🎱 Cuescore Notifier</div>
+  <div class="billiard-table" id="billiardTable">
+    <div class="pocket tl"></div>
+    <div class="pocket tm"></div>
+    <div class="pocket tr"></div>
+    <div class="pocket bl"></div>
+    <div class="pocket bm"></div>
+    <div class="pocket br"></div>
+  </div>
+  <div class="overlay-sub">Verbinding maken met backend...</div>
+  <div class="overlay-status">
+    <div class="spinner"></div>
+    <span id="overlayStatusText">Verbinding controleren</span>
+  </div>
+</div>
 
 <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
 <header>
@@ -787,24 +911,11 @@
     <div class="panel">
       <div class="panel-header">
         <div class="dot"></div>
-        Toernooi Zoeken &amp; Toevoegen
+        Handmatig Toevoegen
       </div>
       <div class="panel-body">
         <div style="font-size:11px; color:var(--muted); margin-bottom:10px">
-          Zoek een toernooi op Cuescore en plak het ID hieronder
-        </div>
-        <div style="display:flex; gap:8px; margin-bottom:12px">
-          <div style="flex:1; position:relative">
-            <input type="text" id="cuescoreSearchInput" placeholder="bv. Hertog Jan..." style="padding-left:32px" onkeydown="if(event.key==='Enter') searchOnCuescore()" />
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted2);font-size:13px;pointer-events:none">⌕</span>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="searchOnCuescore()">
-            ↗ Zoek
-          </button>
-        </div>
-        <div style="font-size:10px; color:var(--muted2); margin-bottom:12px; line-height:1.6; padding:8px 10px; background:var(--surface2); border-radius:4px; border:1px solid var(--border)">
-          Cuescore opent in een nieuw tabblad. Kopieer het ID uit de URL<br>
-          <span style="color:var(--accent)">cuescore.com/tournament/<strong>81456901</strong></span> en plak het hieronder.
+          Buitenlands of ontbrekend toernooi toevoegen via ID
         </div>
         <div class="add-manual">
           <div>
@@ -920,45 +1031,8 @@ const CONFIG = {
   // Vaste Nederlandse toernooi-IDs als fallback seed lijst
   // (Cuescore heeft geen officieel lijst-endpoint, dit zijn bekende NL-toernooien)
   SEED_TOURNAMENT_IDS: [
-    // ── Hertog Jan ──
-    81456901,  // Hertog Jan Special edition 2026
-    // ── Focus Billiards ──
-    80930974,  // Focus op 8-ball
-    80931523,  // Focus huistoernooi 9-ball
-    // ── Boven 't IJ ──
-    78667258,  // Boven 't IJ 9-ball huistoernooi reeks 10!
-    // ── Oscars ──
-    79951456,  // Oscars 9-Ball series Reeks 1
-    // ── Fluke ──
-    75881041,  // Fluke ranking 9ball Seizoen 3
-    // ── De Gracht ──
-    74380552,  // POOLLOKAAL DE GRACHT 2026 8-BALL
-    // ── Mokum Pool & Darts ──
-    81091501,  // Mokum Handicap Madness
-    75881218,  // Mokum 8 & 10ball Ranking (10ball) #14
-    75881263,  // Mokum 8 & 10ball Ranking (10ball) #16
-    75881182,  // Mokum 8 & 10ball Ranking (10ball) #19
-    75881146,  // Mokum 8 & 10ball Ranking (10ball) #21
-    75881188,  // Mokum 8 & 10ball Ranking (10ball) #23
-    75881257,  // Mokum 8 & 10ball Ranking (8ball) #15
-    75881194,  // Mokum 8 & 10ball Ranking (8ball) #17
-    75881287,  // Mokum 8 & 10ball Ranking (8ball) #20
-    75881152,  // Mokum 8 & 10ball Ranking (8ball) #22
-    80879557,  // Mokum MEGA Summer Ranking #3
-    80879560,  // Mokum MEGA Summer Ranking #4
-    80879566,  // Mokum MEGA Summer Ranking #5
-    80879563,  // Mokum MEGA Summer Ranking #6
-    80879551,  // Mokum MEGA Summer Ranking #7
-    80879554,  // Mokum MEGA Summer Ranking #8
-    80835826,  // Mokum OnePocket monthly #10
-    77725510,  // GO Customs Amsterdam Open @ Mokum Final day
-    77923564,  // 9ball €30 entry @Mokum
-    78688402,  // NK Pool 2026 10-ball Kwalificatieronde B - Mokum
-    78688225,  // NK Pool 2026 14.1 Kwalificatieronde A - Mokum
-    77888677,  // Qualifier 1 GO Customs Amsterdam Open @Mokum
-    77722138,  // Qualifier 2 GO Customs Amsterdam Open @Mokum
-    77888701,  // Qualifier 3 GO Customs Amsterdam Open @Mokum
-    77888743   // Qualifier 4 GO Customs Amsterdam Open @Mokum
+    81456901   // Hertog Jan Special edition 2026 — uit Fase 0 verkenning
+    // Voeg hier meer bekende NL toernooi-IDs toe
   ],
 
   // Cuescore API basis URL
@@ -989,10 +1063,14 @@ const state = {
    INIT
    ───────────────────────────────────────────────────────────── */
 async function init() {
-  // Wacht op backend check VOORDAT de speler geladen wordt
-  // Anders is state.backendAvailable nog false als loadWatchlist draait
-  await checkBackend();
+  startBilliardAnimation();
   restoreLocalState();
+
+  // Wacht op backend check VOORDAT de speler geladen wordt
+  await checkBackend();
+
+  // Overlay verbergen na backend check
+  hideLoadingOverlay();
 
   // Als er al een speler-ID in localStorage staat: laad automatisch
   const savedId = localStorage.getItem('cuescore_player_id');
@@ -1002,6 +1080,77 @@ async function init() {
   }
 }
 
+function hideLoadingOverlay() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+function startBilliardAnimation() {
+  const table = document.getElementById('billiardTable');
+  const W = 320, H = 180, R = 12;
+
+  // Poolbal kleuren en nummers
+  const ballDefs = [
+    { n: '1',  color: '#f5d800' },
+    { n: '2',  color: '#1a3cb0' },
+    { n: '3',  color: '#cc2200' },
+    { n: '4',  color: '#7a1faa' },
+    { n: '5',  color: '#e05a00' },
+    { n: '6',  color: '#006622' },
+    { n: '8',  color: '#111111' },
+    { n: '9',  color: '#f5d800' },
+  ];
+
+  const balls = ballDefs.map((def, i) => {
+    const el = document.createElement('div');
+    el.className = 'pool-ball';
+    el.style.background = def.color;
+    el.style.width = el.style.height = (R * 2) + 'px';
+    el.textContent = def.n;
+    table.appendChild(el);
+
+    // Willekeurige startpositie binnen de tafel
+    const x = R + Math.random() * (W - R * 2 - 24);
+    const y = R + Math.random() * (H - R * 2 - 24);
+    // Willekeurige snelheid
+    const speed = 1.5 + Math.random() * 2;
+    const angle = Math.random() * Math.PI * 2;
+
+    return {
+      el,
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed
+    };
+  });
+
+  let animId;
+
+  function animate() {
+    balls.forEach(b => {
+      b.x += b.vx;
+      b.y += b.vy;
+
+      // Stuiteren tegen de wanden
+      if (b.x <= 0) { b.x = 0; b.vx = Math.abs(b.vx); }
+      if (b.x >= W - R * 2) { b.x = W - R * 2; b.vx = -Math.abs(b.vx); }
+      if (b.y <= 0) { b.y = 0; b.vy = Math.abs(b.vy); }
+      if (b.y >= H - R * 2) { b.y = H - R * 2; b.vy = -Math.abs(b.vy); }
+
+      b.el.style.left = b.x + 'px';
+      b.el.style.top  = b.y + 'px';
+    });
+
+    animId = requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  // Stop animatie als overlay verborgen wordt
+  document.getElementById('loadingOverlay').addEventListener('transitionend', () => {
+    cancelAnimationFrame(animId);
+  }, { once: true });
+}
+
 /* ─────────────────────────────────────────────────────────────
    BACKEND CHECK
    ───────────────────────────────────────────────────────────── */
@@ -1009,18 +1158,26 @@ async function checkBackend() {
   if (!CONFIG.FUNCTION_URL) {
     document.getElementById('configNotice').classList.add('visible');
     setStatus(false, 'Lokale modus (geen backend)');
+    const ot = document.getElementById('overlayStatusText');
+    if (ot) ot.textContent = 'Lokale modus';
     return;
   }
 
+  const ot = document.getElementById('overlayStatusText');
+  if (ot) ot.textContent = 'Backend bereiken...';
+
   try {
-    const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health&code=${CONFIG.FUNCTION_KEY}`, {
-      method: 'GET'
+    const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?action=health`, {
+      method: 'GET',
+      headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
     });
     state.backendAvailable = res.ok;
     setStatus(res.ok, res.ok ? 'Backend verbonden' : 'Backend niet bereikbaar');
+    if (ot) ot.textContent = res.ok ? 'Verbonden!' : 'Backend niet bereikbaar';
   } catch {
     state.backendAvailable = false;
     setStatus(false, 'Backend niet bereikbaar');
+    if (ot) ot.textContent = 'Backend niet bereikbaar';
   }
 }
 
@@ -1068,13 +1225,11 @@ async function loadPlayer(silent = false) {
     // UI updaten
     updatePlayerCard();
 
-    // Laad eerst toernooien, dan watchlist, dan render
-    // Zo zijn de toernooi-kaarten al aangemaakt als de watchlist binnenkomt
-    await loadTournaments();
+    // Watchlist laden (backend of localStorage)
     await loadWatchlist();
 
-    // Herrender met de juiste watchlist vinkjes
-    renderTournaments();
+    // Toernooienlijst laden
+    await loadTournaments();
 
     if (!silent) showToast(`Welkom, ${state.playerName}!`, 'success');
     setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Lokale modus');
@@ -1090,14 +1245,11 @@ async function loadPlayer(silent = false) {
     localStorage.setItem('cuescore_player_id', playerId);
 
     updatePlayerCard();
-
-    // Laad eerst toernooien, dan watchlist, dan render
-    await loadTournaments();
     await loadWatchlist();
-    renderTournaments();
+    await loadTournaments();
 
     if (!silent) showToast('ID opgeslagen (validatie overgeslagen)', 'success');
-    setStatus(state.backendAvailable, state.backendAvailable ? 'Backend verbonden' : 'Beperkte modus');
+    setStatus(false, 'Beperkte modus');
   }
 }
 
@@ -1196,9 +1348,6 @@ function normalizeTournaments(raw) {
       stoptime:     t.stoptime  || t.endDate   || '',
       entrystart:   t.entrystart || t.registrationStart || '',
       deadline:     t.deadline  || t.registrationDeadline || '',
-      status:       t.status || '',
-      statusCode:   t.statusCode || 0,
-      logo:         t.owner?.logo || t.organizers?.[0]?.logo || '',
       displayDate:  t.displayDate || formatDate(t.starttime),
       location:     t.owner?.name || t.location || t.city || '',
       country:      t.country || 'NL',
@@ -1213,7 +1362,8 @@ function normalizeTournaments(raw) {
 async function loadWatchlist() {
   if (state.backendAvailable && state.playerId) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?playerId=${state.playerId}&code=${CONFIG.FUNCTION_KEY}`, {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?playerId=${state.playerId}`, {
+        headers: { 'x-functions-key': CONFIG.FUNCTION_KEY }
       });
       if (res.ok) {
         const data = await res.json();
@@ -1252,9 +1402,12 @@ async function saveWatchlist() {
   // Probeer ook backend
   if (state.backendAvailable) {
     try {
-      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi?code=${CONFIG.FUNCTION_KEY}`, {
+      const res = await fetch(`${CONFIG.FUNCTION_URL}/WatchlistApi`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type':    'application/json',
+          'x-functions-key': CONFIG.FUNCTION_KEY
+        },
         body: JSON.stringify(payload)
       });
 
@@ -1344,20 +1497,6 @@ async function addManualTournament() {
   input.value = '';
 }
 
-function searchOnCuescore() {
-  const query = document.getElementById('cuescoreSearchInput').value.trim();
-  if (!query) {
-    // Geen zoekterm - open gewoon de toernooienpagina
-    window.open('https://cuescore.com/tournaments', '_blank');
-    return;
-  }
-  // Open Cuescore tournaments pagina met zoekterm
-  // Cuescore heeft geen directe zoek-URL maar de pagina filtert client-side
-  // We openen de pagina en tonen een instructie
-  window.open(`https://cuescore.com/tournaments`, '_blank');
-  showToast(`Zoek op Cuescore naar "${query}" en kopieer het ID`, '');
-}
-
 function getManualIds() {
   try { return JSON.parse(localStorage.getItem('cuescore_manual_ids') || '[]'); } catch { return []; }
 }
@@ -1418,23 +1557,20 @@ function buildTournamentCard(t, index) {
       </div>
     </div>
     <div class="watch-toggle">
-      <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end">
-        ${t.logo ? `<img src="${escHtml(t.logo)}" alt="" style="width:28px;height:28px;border-radius:5px;object-fit:contain;flex-shrink:0;opacity:0.9;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;" onerror="this.style.display='none'">` : '<div style="width:28px;height:28px;flex-shrink:0;"></div>'}
-        <div class="toggle-wrap">
-          <input
-            type="checkbox"
-            class="toggle-input"
-            id="toggle_${t.id}"
-            ${isWatched ? 'checked' : ''}
-            onchange="toggleWatch('${t.id}', this.checked)"
-          />
-          <label class="toggle-label" for="toggle_${t.id}">
-            <div class="toggle-track"><div class="toggle-thumb"></div></div>
-            ${isWatched ? 'Aan' : 'Uit'}
-          </label>
-        </div>
+      <div class="toggle-wrap">
+        <input
+          type="checkbox"
+          class="toggle-input"
+          id="toggle_${t.id}"
+          ${isWatched ? 'checked' : ''}
+          onchange="toggleWatch('${t.id}', this.checked)"
+        />
+        <label class="toggle-label" for="toggle_${t.id}">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          ${isWatched ? 'Aan' : 'Uit'}
+        </label>
       </div>
-      ${entryInfo ? `<div class="entry-time ${statusClass === 'badge-open' ? 'open' : statusClass === 'badge-soon' ? 'soon' : ''}" style="text-align:right">${entryInfo}</div>` : ''}
+      ${entryInfo ? `<div class="entry-time ${statusClass === 'badge-open' ? 'open' : statusClass === 'badge-soon' ? 'soon' : ''}">${entryInfo}</div>` : ''}
     </div>
   `;
 
@@ -1456,41 +1592,14 @@ function buildTournamentCard(t, index) {
 function getEntryStatus(t) {
   const now = new Date();
 
-  // Bepaal effectieve deadline: deadline veld, of starttime als fallback
-  const effectiveDeadlineStr = t.deadline || t.starttime || '';
-  const deadline = effectiveDeadlineStr ? new Date(effectiveDeadlineStr) : null;
-
-  // Al gesloten? (deadline verstreken)
-  if (deadline && now > deadline) {
-    return { statusLabel: 'Gesloten', statusClass: 'badge-closed', entryInfo: 'Inschrijving gesloten' };
-  }
-
-  // Geen entrystart — kijk of het toernooi toch open is via status veld
   if (!t.entrystart) {
-    const statusLower = (t.status || '').toLowerCase();
-    const isOpen = statusLower === 'open' || statusLower === 'registration';
-
-    if (isOpen) {
-      return {
-        statusLabel: '✓ Open',
-        statusClass: 'badge-open',
-        entryInfo: deadline ? `Sluit ${formatDateShort(effectiveDeadlineStr)}` : 'Open'
-      };
-    }
-    // Controleer of starttime nog in de toekomst ligt (toernooi gepland maar geen entrystart)
-    if (t.starttime) {
-      const startDt = new Date(t.starttime);
-      const daysUntilStart = (startDt - now) / (1000 * 60 * 60 * 24);
-      if (daysUntilStart <= 1 && daysUntilStart > 0) {
-        return { statusLabel: '⏰ Snel', statusClass: 'badge-soon', entryInfo: `Start ${formatDateShort(t.starttime)}` };
-      }
-    }
     return { statusLabel: 'Datum onbekend', statusClass: 'badge-closed', entryInfo: '' };
   }
 
   const entryStart = new Date(t.entrystart);
+  const deadline   = t.deadline ? new Date(t.deadline) : null;
 
-  // Al gesloten via deadline?
+  // Al gesloten?
   if (deadline && now > deadline) {
     return { statusLabel: 'Gesloten', statusClass: 'badge-closed', entryInfo: 'Inschrijving gesloten' };
   }
@@ -1500,7 +1609,7 @@ function getEntryStatus(t) {
     return {
       statusLabel: '✓ Open',
       statusClass: 'badge-open',
-      entryInfo: deadline ? `Sluit ${formatDateShort(effectiveDeadlineStr)}` : 'Open'
+      entryInfo:   deadline ? `Sluit ${formatDateShort(t.deadline)}` : 'Open'
     };
   }
 
@@ -1510,14 +1619,14 @@ function getEntryStatus(t) {
     return {
       statusLabel: '⏰ Snel',
       statusClass: 'badge-soon',
-      entryInfo: `Over ${Math.ceil(daysUntil)} dag${daysUntil < 2 ? '' : 'en'}`
+      entryInfo:   `Over ${Math.ceil(daysUntil)} dag${daysUntil < 2 ? '' : 'en'}`
     };
   }
 
   return {
     statusLabel: 'Gepland',
     statusClass: 'badge-closed',
-    entryInfo: formatDateShort(t.entrystart)
+    entryInfo:   formatDateShort(t.entrystart)
   };
 }
 
